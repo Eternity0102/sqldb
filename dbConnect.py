@@ -16,7 +16,7 @@ class _Handler:
         return str1[:-1]
 
     def dic_combineAnd(self,dic):
-        #形如 A=a and B=b and C=c
+        # 形如 A=a and B=b and C=c
         str1 = ''
         for key in dic:
             keyl = key.split(' ')
@@ -88,7 +88,6 @@ class _CudData(object):
         syntax = 'select %s from %s' % (syntax, self.__table_name)
         for condition in condition_dic:
             syntax += ' %s join '%method + condition + ' on ' + condition_dic[condition]
-        print('%s连接语句：'%method, syntax)
         self.__cursor.execute(syntax)
 
     def getBySource(self, syntax):
@@ -118,11 +117,11 @@ class _CudData(object):
         syntax = "select %s from %s %s %s %s %s"%(
             ','.join(self.select),
             self.__table_name,
-            '%s'%(' %s %s'% (' having ' if self.having else " where ",
+            '%s'%('%s%s'% (' having ' if self.having else " where ",
                              having_str if  having_str  else "" )) if self.filter else "",
-            ' group by "%s"' % self.group_by if self.group_by else "",
-            ' order by %s ' % order_by_str if order_by_str else "",
-            ' limit %s' % self.limit if self.limit!=-1 else "",
+            'group by %s' % self.group_by if self.group_by else "",
+            'order by %s ' % order_by_str if order_by_str else "",
+            'limit %s' % self.limit if self.limit!=-1 else "",
         )
         self.__cursor.execute(syntax)
         self.retcur = self.__cursor.fetchall()
@@ -212,7 +211,7 @@ class _HandlerData(object):
                 for linenum in range(num):
                     L.append(self.retcur[linenum])
             else:
-                raise IndexError
+                raise IndexError()
         else:
             total = 0
             for line in self.retcur:
@@ -311,7 +310,7 @@ class _AlterTable(object):
         self.__cursor.execute('show index from '+self.__table_name)
         for cur in self.__cursor.fetchall():
             #字段名:索引名
-            if not cur[1]:
+            if not cur[1] and cur[2]!='PRIMARY':
                 dic[cur[4]]=cur[2]
         return dic
 
@@ -321,6 +320,7 @@ class _AlterTable(object):
 
     def set_primaryKey(self,field,auto_increment=True):
         syntax = 'alter table '+self.__table_name+' add primary key(%s)'%field
+        print(syntax)
         self.__cursor.execute(syntax)
 
     def set_autoIncrement(self,field):
@@ -363,7 +363,7 @@ class _AlterTable(object):
                 self.foreign_field : str = ''
                 self.on_delete : bool = False
                 self.on_update : bool = False
-                self.casecade : str = 'casecade'
+                self.cascade : str = 'cascade'
                 self.__cursor = db.cursor()
                 self.__table_name = table_name
 
@@ -374,10 +374,11 @@ class _AlterTable(object):
                     pass
 
             def save(self):
-                syntax = 'alter table %s add foreign key(%s)'%(self.__table_name,self.self_field)
-                syntax += 'references %s(%s)'%(self.foreign_table,self.foreign_field)
-                syntax += 'on update %s'%self.casecade if self.on_update else ''
-                syntax += 'on delete %s'%self.casecade if self.on_update else ''
+                syntax = 'alter table %s add foreign key(%s) '%(self.__table_name,self.self_field)
+                syntax += 'references %s(%s) '%(self.foreign_table,self.foreign_field)
+                syntax += 'on update %s '%self.cascade if self.on_update else ''
+                syntax += 'on delete %s '%self.cascade if self.on_update else ''
+                print(syntax)
                 self.__cursor.execute(syntax)
         return InnerClassForeignKey(self.__db,self.__table_name)
 
@@ -408,7 +409,8 @@ class _AlterTable(object):
                     key_name = key[0]
                     break
             else:
-                raise Exception('字段%s未关联外键'%field)
+                str = '字段%s未关联外键' % field
+                raise Exception(str)
         syntax = 'alter table %s drop foreign key %s' % (self.__table_name, key_name)
         self.__cursor.execute(syntax)
 
@@ -419,18 +421,25 @@ class _NewTable(_AlterTable):
         super().__init__(db,table_name)
         self.primary_key: str = ''
         self.zerofill: list = []
+        self.__table_name = table_name
+        self.__db = db
+        self.__cursor = self.__db.cursor()
+        self.engine: str = 'innodb'
 
     def set_field(self,field_dic):
         if self.zerofill:
             if type(self.zerofill) is not list:
                 raise TypeError(self.zerofill)
         var = ''
+        engine = ''
         for field in field_dic:
             zerofill = field if field in self.zerofill else ''
             auto_increment = ' primary key auto_increment' if self.primary_key==field else ''
-            var += field + ' ' + field_dic[field]+auto_increment+zerofill+','+' '
+            var += field + ' ' + field_dic[field]+auto_increment+(' zerofill '
+                if zerofill else '')+', '
         var = var[:-2]
-        syntax = 'create table %s(%s)'%(self.__table_name,var)
+        syntax = 'create table %s(%s) %s'%(self.__table_name,var,'engine="%s"'%self.engine)
+        print(syntax)
         self.__cursor.execute(syntax)
 
 
@@ -459,7 +468,7 @@ class SqlDB(object):
         try:
             self.__cursor.close()
             self.__db.close()
-        except :
+        except Exception:
             pass
 
     def __connect(self):

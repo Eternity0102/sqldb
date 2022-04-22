@@ -45,6 +45,8 @@ print(showtable)
 
 ### 2.创建表
 
+只能获取一个表对象，需要进行设置字段操作才能在数据库中生成表
+
 ```python
 newTable = db.create_table('test1')#创建一个名为test1的新表，获取一个新表对象，可对该表进行操作
 ```
@@ -63,11 +65,32 @@ db.drop_table('test1')
 bindTable = db.alter_table()
 ```
 
+### 5.获取表的字段名
+
+```python
+getField = newTable.get_field()
+print('获取到的表的字段:', getField)
+```
+
 
 
 
 
 ## 3.增删改查操作(CRUD)
+
+```mysql
+对象.字段名可用于对当前属性的值进行设置
+对象.where_字段名当做于查询条件
+所有的表中操作都提供了'where_字段名'
+例如：
+    bindTable.name = '王维'
+    bindTable.age = 100
+    bindTable.where_name = '李清照6号'
+相当于sql语句：
+	update test1 set name='王维',age=100 where name='李清照'
+```
+
+
 
 ### 1.查询表中内容
 
@@ -82,8 +105,8 @@ bindTable = db.alter_table()
    2. 获取当前绑定的表
 
       ```python
-      bind_table = bindTable.get_table()
-      print('当前绑定的表为：', bind_table)
+      bindTableName = bindTable.get_table()
+      print('当前绑定的表为：', bindTableName)
       ```
 
 2. 使用原生sql语句查询数据库中表的信息
@@ -110,11 +133,11 @@ bindTable = db.alter_table()
    2. 利用绑定好的查询集条件直接查询
 
       ```python
-      method_result = bindTable.get_data()#
+      method_result = bindTable.get_data()
       print("用封装方法查询成功:", method_result.get())
       ```
 
-### 2.向表中插入数据
+### 2.向表中插入记录
 
 当创建表对象后，数据表中所有的字段都会被映射为一个对象属性，直接通过**对象.字段名**可以直接操作当前字段
 
@@ -143,7 +166,7 @@ bindTable = db.alter_table()
            bindTable.create()
    ```
 
-### 3.修改表中数据
+### 3.修改表记录
 
 直接修改表中数据，通过**对象.字段名**操作字段
 
@@ -154,7 +177,7 @@ bindTable.where_name = '李清照6号'
 bindTable.update()#提交当前绑定的属性内容到数据库修改
 ```
 
-### 4.删除数据
+### 4.删除表记录
 
 ```python
 bindTable.where_sex = '女'
@@ -170,45 +193,56 @@ bindTable.delete()#提交当前要修改的内容
 
 
 
-## 3.创建/修改表的操作
+## 4.创建/修改表的操作
 
 ### 1. 创建新表设置字段
 
 ```python
 newTable = db.create_table('test1')
+newTable.engine = 'innodb'#默认是innodb，可以设置其他存储引擎
 newTable.set_field({
     'id': 'int',
     'name': 'varchar(20)',
-    'age': 'int',
+    'age': 'int(2)',
+    'sex': 'varchar(2)',
     'addr': 'varchar(30)',
-    'au_name': 'int',
-})#传入一个键值对设置表字段以及数据类型
+    'city': 'varchar(20)',
+    'au_name': 'varchar(25)',
+    'au_id':'int',
+})#传入一个键值对设置表字段以及数据类型，执行完后直接提交到数据库
+```
+
+可以在创建表之前设置主键和zerofill属性，在执行set_field方法之前
+
+```python
+newTable.primary_key = 'id'
+newTable.zerofill = ['id','age','money']#必须是一个列表
 ```
 
 若修改表则获取对象即可
 
 ```python
-newTable = db.get_fromTable('test1')
+newTable = db.alter_table('test1')
 ```
 
 ### 2.向已有表中添加字段
 
 ```python
-newTable.add_field('city', 'varchar(20)')
+newTable.add_field('country', 'varchar(20)',after='city')#在city之后添加字段
 print('添加字段后的字段名列表：', newTable.get_field())
 ```
 
 ### 3.向已有表中删除字段
 
 ```python
-newTable.drop_field('au_name')
+newTable.drop_field('city')
 print('删除字段后的字段名列表：', newTable.get_field())
 ```
 
 ### 4.向已有表中设置默认约束
 
 ```python
-newTable.default('city', '贵阳')
+newTable.default('country', '首都北京')
 ```
 
 ### 5.向已有表中设置非空约束
@@ -222,6 +256,7 @@ newTable.not_null('name')
 ```python
 newTable.set_index('id')
 newTable.set_index('name', 'name_index')
+# 上方传参(索引字段 , 设置索引名)，索引名可以不传参，默认以字段名作为索引名
 print("获取设置的普通索引：", newTable.get_index())
 ```
 
@@ -238,6 +273,7 @@ print("获取删除后的普通索引：", newTable.get_index())
 
 ```python
 newTable.set_unique('id', 'id_unique')
+# 上方传参(索引字段 , 设置索引名)，索引名可以不传参，默认以字段名作为索引名
 print("获取创建的唯一索引：", newTable.get_unique())
 ```
 
@@ -259,6 +295,7 @@ print("获取创建的主键索引：", newTable.get_primaryKey())
 
 ```python
 newTable.set_autoIncrement('id')
+#设置过主键则不需要再进行设置
 ```
 
 ### 12.删除主键索引
@@ -282,7 +319,7 @@ foreignobj.update = True
 foreignobj.save()
 ```
 
-### 14.通过两种方式获取外键
+### 14.获取外键
 
 ```python
 print('获取设置后的外键索引:', newTable.get_foreignKey())
@@ -292,26 +329,13 @@ print('获取设置后的外键索引:', newTable.get_foreignKey())
 
 ```python
 newTable.drop_foreignKey('au_id')
-print('获取删除后的外键索引:', tableobj.get_foreignKey())
+print('获取删除后的外键索引:', newTable.get_foreignKey())
 ```
 
-### 16.向表中添加字段
-
-获取一个新的对象添加字段
+### 16.内连接查询
 
 ```python
-tableobj = db.get_fromTable('test1')
-tableobj.add_field('au_id', 'int', after='city')
-```
-
-### 17.内连接查询
-
-```python
-#绑定查询表对象
-getdataobj = db.get_fromTable('test1')
-
-# 内连接查询
-getdataobj.inner_connect({
+newTable.inner_connect({
 'sheng':'s_name',
 'city':'c_name',
 'xian':'x_name',
@@ -323,10 +347,10 @@ getdataobj.inner_connect({
 )
 ```
 
-### 18.左连接查询
+### 17.左连接查询
 
 ```python
-getdataobj.left_connect({
+newTable.left_connect({
     'sheng':'s_name',
     'city':'c_name',
     'xian':'x_name',
@@ -338,25 +362,10 @@ getdataobj.left_connect({
 )
 ```
 
-### 19.左连接查询
+### 18.右连接查询
 
 ```python
-getdataobj.left_connect({
-    'sheng':'s_name',
-    'city':'c_name',
-    'xian':'x_name',
-},
-    {
-        'city':'sheng.s_id=city.cfather_id',
-        'xian':'city.c_id=xian.xfather_id',
-    }
-)
-```
-
-### 20.右连接查询
-
-```python
-getdataobj.right_connect({
+newTable.right_connect({
 'sheng':'s_name',
 'city':'c_name',
 'xian':'x_name',
@@ -374,9 +383,9 @@ getdataobj.right_connect({
 
 
 
-## 4.表的授权
+## 5.表的授权操作
 
-### 1.获取授权表
+### 1.获取授权信息
 
 ```python
 print(db.show_grant(('user','host')))
