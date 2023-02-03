@@ -48,7 +48,7 @@ class _CudData(object):
         self.__cursor = self.__db.cursor()
         self.__table_name = table_name
         self.select :tuple = ()
-        self.having :bool = True
+        self.having :bool = False
         self.filter : dict = {}
         self.group_by: str = ''
         self.order_by : tuple = ()
@@ -77,7 +77,7 @@ class _CudData(object):
     def __sql_excuete(self,syntax):
         '''提供sql语句查询'''
         self.__cursor = self.__db.cursor()
-        self.__cursor.execute(syntax)
+        self.__cursor.execute(r'%s'%syntax)
         self.__db.commit()
 
     def __select_connect(self, method, field_dic, condition_dic):
@@ -127,6 +127,7 @@ class _CudData(object):
         self.retcur = self.__cursor.fetchall()
         for line in self.retcur:
             L.append(line)
+        self.__init__(self.__db,self.__table_name)
         return _HandlerData(L)
 
     def get_table(self):
@@ -148,9 +149,10 @@ class _CudData(object):
                 continue
             else:
                 field_name += var + ','
-                value_name += '"'+var_value + '",'
+                value_name += '"'+var_value.replace('"','""') + '",'
         field_name = field_name[:-1]
         value_name = value_name[:-1]
+
         syntax = 'insert into %s(%s) values(%s)'%(self.__table_name,
                 field_name,value_name
         )
@@ -207,18 +209,14 @@ class _HandlerData(object):
     def get(self,num=-1):
         L = []
         if num != -1:
-            if num<len(self.retcur):
+            if num < len(self.retcur):
                 for linenum in range(num):
                     L.append(self.retcur[linenum])
             else:
                 raise IndexError()
         else:
-            total = 0
             for line in self.retcur:
-                if total == 10:
-                    break
                 L.append(line)
-                total+=1
         return L
 
 
@@ -320,7 +318,6 @@ class _AlterTable(object):
 
     def set_primaryKey(self,field,auto_increment=True):
         syntax = 'alter table '+self.__table_name+' add primary key(%s)'%field
-        print(syntax)
         self.__cursor.execute(syntax)
 
     def set_autoIncrement(self,field):
@@ -378,7 +375,6 @@ class _AlterTable(object):
                 syntax += 'references %s(%s) '%(self.foreign_table,self.foreign_field)
                 syntax += 'on update %s '%self.cascade if self.on_update else ''
                 syntax += 'on delete %s '%self.cascade if self.on_update else ''
-                print(syntax)
                 self.__cursor.execute(syntax)
         return InnerClassForeignKey(self.__db,self.__table_name)
 
@@ -439,7 +435,6 @@ class _NewTable(_AlterTable):
                 if zerofill else '')+', '
         var = var[:-2]
         syntax = 'create table %s(%s) %s'%(self.__table_name,var,'engine="%s"'%self.engine)
-        print(syntax)
         self.__cursor.execute(syntax)
 
 
